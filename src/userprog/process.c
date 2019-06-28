@@ -152,8 +152,12 @@ tid_t process_execute(const char *file_name)
   strlcpy(fn_copy, file_name, PGSIZE); //file_name baocuole shenqi
                                        //PGSIZE :1 <<12
 
+  char *thread_name, *the_left;
+  thread_name = strtok_r (file_name, " ", &the_left);
+
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create(thread_name, PRI_DEFAULT, start_process, fn_copy);
 
   lock_acquire(&table_lock);
   while (tid_to_process(tid) == NULL)
@@ -166,7 +170,7 @@ tid_t process_execute(const char *file_name)
 
   if (tid == TID_ERROR)
     palloc_free_page(fn_copy);
-
+  //palloc_free_page(file_name);//maybe in needed
   return tid;
 }
 
@@ -184,7 +188,49 @@ start_process(void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load(file_name, &if_.eip, &if_.esp);
+
+  char *prog_name, *the_left;
+  prog_name = strtok_r (file_name, " ", &the_left);
+
+  success = load(prog_name, &if_.eip, &if_.esp);
+
+  if (success)
+  {
+
+    char *esp = if_.esp;
+    char *args[32], *arg;//128 bytes
+    int top = 0;
+
+    for (arg = prog_name; arg != NULL; arg = strtok_r (NULL, " ", &the_left))
+    {
+      int len = strlen (arg);
+      esp -= len + 1;
+      strlcpy (esp, arg, len + 1);
+      args[top++] = esp;
+    }
+
+    //align
+    while (((char *) if_.esp - esp) % 4 != 0) --esp;
+    esp -= 4;
+    *((int *) esp) = 0;
+
+    int argc = top;
+    while (top > 0)
+    {
+      esp -= 4;
+      --top, *((char **) esp) = args[top];
+    }
+    char **argv = (char **) esp;
+
+    esp -= 4;
+    *((char ***) esp) = argv;
+    esp -= 4;
+    *((int *) esp) = argc;
+    esp -= 4;
+    *((int *) esp) = 0;
+
+    if_.esp = esp;
+  }
 
   /* If load failed, quit. */
   palloc_free_page(file_name);
@@ -217,6 +263,10 @@ start_process(void *file_name_)
   NOT_REACHED();
 }
 
+
+
+
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -230,6 +280,7 @@ int process_wait(tid_t child_tid UNUSED)
 {
   while (true)
     ;
+  //make it loop forever 
   //dont know if right
   struct thread *cur = thread_current();
   bool found = false;
