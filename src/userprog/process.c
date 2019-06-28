@@ -45,6 +45,7 @@ static struct pro_entry **process_table;
 
 static void process_table_init()
 {
+    //printf("<0>\n");
   table_size = 0;
   table_capacity = 64;
   //the capacity can be changed, i dont know which is the best
@@ -155,11 +156,15 @@ tid_t process_execute(const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
 
+  printf("<1>\n");
   lock_acquire(&table_lock);
+  printf("<2>\n");
   while (tid_to_process(tid) == NULL)
     cond_wait(&lock_cond, &table_lock);
+  printf("<3>\n");
   int status = tid_to_process(tid)->exitcode;
   lock_release(&table_lock);
+  printf("<4>\n");
 
   if (status == STATUS_ERROR)
     return TID_ERROR;
@@ -167,6 +172,7 @@ tid_t process_execute(const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page(fn_copy);
 
+  printf("<5>\n");
   return tid;
 }
 

@@ -136,6 +136,7 @@ void boundary_check(const void *uaddr)
 static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
+    printf("syscall_handler\n");
 
   char *esp = f->esp;
 
@@ -148,43 +149,56 @@ syscall_handler(struct intr_frame *f UNUSED)
   switch (type)
   {
   case SYS_HALT:
+    printf("sys_halt\n");
     shutdown_power_off();
-    //NOT_REACHED(); //no it should not be written , it is a panic
+    NOT_REACHED(); //no it should not be written , it is a panic
     //dont no what it is, but it is used in lib/user/syscall
   case SYS_EXIT:
+    printf("sys_exit\n");
     sys_exit(args[1]);
-    //NOT_REACHED();
+    NOT_REACHED();
   case SYS_EXEC:
+    printf("sys_exec\n");
     f->eax = sys_exec((const char *)args[1]);
     return;
   case SYS_WAIT:
+    printf("sys_wait\n");
     f->eax = sys_wait(args[1]);
     return;
   case SYS_CREATE:
+    printf("sys_create\n");
     f->eax = sys_create((const char *)args[1], args[2]);
     return;
   case SYS_REMOVE:
+    printf("sys_remove\n");
     f->eax = sys_remove((const char *)args[1]);
     return;
   case SYS_OPEN:
+    printf("sys_open\n");
     f->eax = sys_open((const char *)args[1]);
     return;
   case SYS_FILESIZE:
+    printf("sys_filesize\n");
     f->eax = sys_filesize(args[1]);
     return;
   case SYS_READ:
+    printf("sys_read\n");
     f->eax = sys_read(args[1], (void *)args[2], args[3]);
     return;
   case SYS_WRITE:
+    printf("sys_write\n");
     f->eax = sys_write(args[1], (const void *)args[2], args[3]);
     return;
   case SYS_SEEK:
+    printf("sys_seek\n");
     sys_seek(args[1], args[2]);
     return;
   case SYS_TELL:
+    printf("sys_tell\n");
     f->eax = sys_tell(args[1]);
     return;
   case SYS_CLOSE:
+    printf("sys_close\n");
     sys_close(args[1]);
     return;
   default:
