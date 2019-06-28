@@ -225,13 +225,10 @@ lock_acquire (struct lock *lock)
     cur_holder = cur_lock->holder;
   }
 
-  sema_down (&lock->semaphore);
   // already acquired
+  sema_down (&lock->semaphore);
   lock->holder = t;
   t->wait_lock = NULL;
-  if (lock->priority < t->priority) {
-      lock->priority = t->priority;
-  }
   list_insert_ordered(&t->locks, &lock->lock_elem, cmp_greater_lock_priority, NULL);
 }
 
@@ -295,12 +292,13 @@ lock_held_by_current_thread (const struct lock *lock)
 
   return lock->holder == thread_current ();
 }
-
+
 /* One semaphore in a list. */
 struct semaphore_elem 
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -392,6 +390,7 @@ static bool cmp_greater_thread_priority(const struct list_elem *a, const struct 
     ASSERT(a != NULL && b != NULL);
     const struct thread *lhs = list_entry(a, struct thread, elem);
     const struct thread *rhs = list_entry(b, struct thread, elem);
+    printf("\n\n\n%s %s\n\n\n", lhs->name, rhs->name);
     return lhs->priority > rhs->priority;
 }
 

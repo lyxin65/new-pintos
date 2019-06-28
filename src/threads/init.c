@@ -103,6 +103,7 @@ pintos_init (void)
 #ifdef USERPROG
   tss_init ();
   gdt_init ();
+  process_init();
 #endif
 
   /* Initialize interrupt handlers. */
