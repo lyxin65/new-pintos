@@ -128,6 +128,11 @@ void sys_exit(int status)
 
 void boundary_check(const void *uaddr)
 {
+  struct thread *cur = thread_current();
+  if (uaddr == NULL || !is_user_vaddr(uaddr) ||
+      (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
+  sys_exit(-1);
+
   // check uaddr range or segfaults
   if(get_user (uaddr) == -1)
     fail_invalid_access();
