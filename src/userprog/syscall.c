@@ -16,6 +16,12 @@
 #include "threads/malloc.h"
 #include "lib/kernel/list.h"
 
+#ifdef DEBUG
+#define __debug(...) printf(__VA_ARGS__)
+#else
+#define __debug(...) /* nop */
+#endif
+
 //what to do :
 //wait \exev \boundary check
 
@@ -80,6 +86,7 @@ static int num_of_args(const char *esp, int args[])
   {
   case SYS_HALT:
     argc = 1;
+    break;
   case SYS_EXIT:
   case SYS_EXEC:
   case SYS_WAIT:
@@ -89,12 +96,15 @@ static int num_of_args(const char *esp, int args[])
   case SYS_TELL:
   case SYS_CLOSE:
     argc = 2;
+    break;
   case SYS_CREATE:
   case SYS_SEEK:
     argc = 3;
+    break;
   case SYS_READ:
   case SYS_WRITE:
     argc = 4;
+    break;
   default:
     ASSERT(false);
   }
@@ -130,8 +140,8 @@ void boundary_check(const void *uaddr)
 {
   struct thread *cur = thread_current();
   if (uaddr == NULL || !is_user_vaddr(uaddr) ||
-      (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
-  sys_exit(-1);
+          (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
+      sys_exit(-1);
 
   // check uaddr range or segfaults
   if(get_user (uaddr) == -1)
@@ -141,11 +151,12 @@ void boundary_check(const void *uaddr)
 static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
-    printf("syscall_handler\n");
+    __debug("syscall_handler\n");
+    __debug("name: %s\n", thread_current()->name);
 
   char *esp = f->esp;
 
-  int args[4];
+  int args[4] = {0};
   int argc = num_of_args(esp, args);
   ASSERT(argc <= 4);
 
@@ -154,56 +165,56 @@ syscall_handler(struct intr_frame *f UNUSED)
   switch (type)
   {
   case SYS_HALT:
-    printf("sys_halt\n");
+    __debug("sys_halt\n");
     shutdown_power_off();
     NOT_REACHED(); //no it should not be written , it is a panic
     //dont no what it is, but it is used in lib/user/syscall
   case SYS_EXIT:
-    printf("sys_exit\n");
+    __debug("sys_exit\n");
     sys_exit(args[1]);
     NOT_REACHED();
   case SYS_EXEC:
-    printf("sys_exec\n");
+    __debug("sys_exec\n");
     f->eax = sys_exec((const char *)args[1]);
     return;
   case SYS_WAIT:
-    printf("sys_wait\n");
+    __debug("sys_wait\n");
     f->eax = sys_wait(args[1]);
     return;
   case SYS_CREATE:
-    printf("sys_create\n");
+    __debug("sys_create %s %d\n", (const char *)args[1], args[2]);
     f->eax = sys_create((const char *)args[1], args[2]);
     return;
   case SYS_REMOVE:
-    printf("sys_remove\n");
+    __debug("sys_remove\n");
     f->eax = sys_remove((const char *)args[1]);
     return;
   case SYS_OPEN:
-    printf("sys_open\n");
+    __debug("sys_open\n");
     f->eax = sys_open((const char *)args[1]);
     return;
   case SYS_FILESIZE:
-    printf("sys_filesize\n");
+    __debug("sys_filesize\n");
     f->eax = sys_filesize(args[1]);
     return;
   case SYS_READ:
-    printf("sys_read\n");
+    __debug("sys_read\n");
     f->eax = sys_read(args[1], (void *)args[2], args[3]);
     return;
   case SYS_WRITE:
-    printf("sys_write\n");
+    __debug("sys_write\n");
     f->eax = sys_write(args[1], (const void *)args[2], args[3]);
     return;
   case SYS_SEEK:
-    printf("sys_seek\n");
+    __debug("sys_seek\n");
     sys_seek(args[1], args[2]);
     return;
   case SYS_TELL:
-    printf("sys_tell\n");
+    __debug("sys_tell\n");
     f->eax = sys_tell(args[1]);
     return;
   case SYS_CLOSE:
-    printf("sys_close\n");
+    __debug("sys_close\n");
     sys_close(args[1]);
     return;
   default:
@@ -233,10 +244,19 @@ int sys_wait(pid_t pid)
 
 bool sys_create(const char *file, unsigned initial_size)
 {
+    bool success = false;
+    __debug("<<1>>\n");
   boundary_check((const uint8_t*)file);
+    __debug("<<2>>\n");
   lock_acquire(&lock_for_fs);
-  bool success = filesys_create(file, initial_size);
+    __debug("<<3>>\n");
+  __debug("file: %s %d\n", file, initial_size);
+  __debug("holder: %s\n", lock_for_fs.holder->name);
+  success = filesys_create(file, initial_size);
+  __debug("success: %d\n", success);
+    __debug("<<4>>\n");
   lock_release(&lock_for_fs);
+    __debug("<<5>>\n");
   return success;
 }
 

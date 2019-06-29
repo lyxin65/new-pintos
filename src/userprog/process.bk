@@ -19,19 +19,20 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 
+#include "devices/timer.h"
 #include "threads/synch.h"
 #include "lib/syscall-nr.h"
 #include "userprog/syscall.h"
-#include "threads/malloc.h"
-
-static thread_func start_process NO_RETURN;
-static bool load(const char *cmdline, void (**eip)(void), void **esp);
 
 #ifdef DEBUG
 #define __debug(...) printf(__VA_ARGS__)
 #else
 #define __debug(...) /* nop */
 #endif
+
+static thread_func start_process NO_RETURN;
+static bool load(const char *cmdline, void (**eip)(void), void **esp);
+
 /* modified by YN  begin*/
 struct pro_entry
 {
@@ -151,8 +152,6 @@ tid_t process_execute(const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  __debug("filename: %s\n", file_name);
-
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page(0);
@@ -161,13 +160,13 @@ tid_t process_execute(const char *file_name)
   strlcpy(fn_copy, file_name, PGSIZE); //file_name baocuole shenqi
                                        //PGSIZE :1 <<12
 
-  char *thread_name, *the_left;
-  thread_name = palloc_get_page(0);
-  strlcpy(thread_name, file_name, PGSIZE);
-  thread_name = strtok_r (thread_name, " ", &the_left);
+ // char *thread_name, *the_left;
+ // thread_name = strtok_r (file_name, " ", &the_left);
+
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create(thread_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+  timer_sleep(100);
 
   __debug("<1>\n");
   lock_acquire(&table_lock);
@@ -175,40 +174,20 @@ tid_t process_execute(const char *file_name)
   while (tid_to_process(tid) == NULL)
     cond_wait(&lock_cond, &table_lock);
   __debug("<3>\n");
-  int status = tid_to_process(tid)->exitcode;
+//  int status = tid_to_process(tid)->exitcode;
+
+ // __debug("holder: %s\n", lock_for_fs.holder->name);
   lock_release(&table_lock);
   __debug("<4>\n");
 
-  if (status == STATUS_ERROR)
-    return TID_ERROR;
+//  if (status == STATUS_ERROR)
+ //   return TID_ERROR;
 
-  if (tid == TID_ERROR)
+  if (tid == STATUS_ERROR)
     palloc_free_page(fn_copy);
+  int status = tid_to_process(tid)->exitcode;
   //palloc_free_page(file_name);//maybe in needed
 
-  
-  struct thread *cur = thread_current ();
-  if (cur->pro_child_arr_capacity == 0)
-    {
-      cur->pro_child_arr_capacity = 2;
-      cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
-      ASSERT (cur->pro_child_pro);
-    }
-  ASSERT (cur->pro_child_number <= cur->pro_child_arr_capacity);
-  if (cur->pro_child_arr_capacity == cur->pro_child_number)
-    {
-      tid_t *old = cur->pro_child_pro;
-      cur->pro_child_pro =
-          malloc (sizeof (tid_t) * cur->pro_child_arr_capacity * 2);
-      ASSERT (cur->pro_child_pro);
-      for (int i = 0; i < cur->pro_child_arr_capacity; ++i)
-        cur->pro_child_pro[i] = old[i];
-      cur->pro_child_arr_capacity *= 2;
-      free(old);
-    }
-  cur->pro_child_pro[cur->pro_child_number++] = tid;
-
-  if (thread_name) palloc_free_page(thread_name);
   __debug("<5>\n");
   return tid;
 }
@@ -272,7 +251,7 @@ start_process(void *file_name_)
   }
 
   /* If load failed, quit. */
-  //palloc_free_page(file_name);
+  palloc_free_page(file_name);
 
   struct thread *cur = thread_current();
   struct pro_entry *entry = make_entry(cur->tid);
@@ -317,8 +296,8 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-  //while (true)
-   // ;
+ // while (true)
+ //   ;
   //make it loop forever 
   //dont know if right
   struct thread *cur = thread_current();
@@ -334,6 +313,7 @@ int process_wait(tid_t child_tid UNUSED)
   if (!found)
     return -1;
 
+      __debug("---found it!---\n");
   lock_acquire(&table_lock);
   struct pro_entry *entry = tid_to_process(child_tid);
   ASSERT(entry);
@@ -342,9 +322,11 @@ int process_wait(tid_t child_tid UNUSED)
   lock_acquire(&entry->lk);
   while (entry->exitcode == STATUS_RUNNING)
   {
+      __debug ("---waiting---\n");
     ASSERT(intr_get_level() == INTR_ON);
     cond_wait(&entry->cond, &entry->lk);
   }
+      __debug("---ended!---\n");
   int exitcode = entry->exitcode;
   entry->exitcode = -1;
   lock_release(&entry->lk);
@@ -358,8 +340,10 @@ void process_exit(void)
   struct thread *cur = thread_current();
   uint32_t *pd;
 
-  if (cur->exitcode != STATUS_ERROR && strlen(cur->name) > 0)
+  if (cur->exitcode != STATUS_ERROR)
     printf("%s: exit(%d)\n", cur->name, cur->exitcode);
+  else
+      __debug("%s: error(%d)!!\n", cur->name, cur->exitcode);
 
   struct list *fd_list = &cur->file_descriptors;
   while (!list_empty(fd_list))
