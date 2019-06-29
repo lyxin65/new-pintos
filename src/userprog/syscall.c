@@ -79,6 +79,9 @@ struct file_descriptor *get_fd(struct thread *t, int fd_num)
 static int num_of_args(const char *esp, int args[])
 {
   int argc;
+  boundary_check((const uint8_t*)(esp));
+  boundary_check((const uint8_t*)(esp + 1));
+  boundary_check((const uint8_t*)(esp + 2));
   boundary_check((const uint8_t*)(esp + 3)); //maybe check all is a must
 
   int sys_num = *(int *)esp;
@@ -112,6 +115,9 @@ static int num_of_args(const char *esp, int args[])
   for (int i = 0; i < argc; ++i)
   {
     const int *addr = (const int *)(esp + 4 * i);
+    boundary_check((const uint8_t*)(addr));
+    boundary_check((const uint8_t*)(addr + 1)); 
+    boundary_check((const uint8_t*)(addr + 2));
     boundary_check((const uint8_t*)(addr + 3));
     args[i] = *addr;
   }
@@ -226,6 +232,9 @@ syscall_handler(struct intr_frame *f UNUSED)
 pid_t sys_exec(const char *cmd_line)
 {
   boundary_check((const uint8_t*)(cmd_line));
+  boundary_check((const uint8_t*)(cmd_line+1));
+  boundary_check((const uint8_t*)(cmd_line+2));
+  boundary_check((const uint8_t*)(cmd_line+3));
   lock_acquire(&lock_for_fs);
   pid_t pid = process_execute(cmd_line);
   lock_release(&lock_for_fs);
