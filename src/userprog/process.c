@@ -22,6 +22,7 @@
 #include "threads/synch.h"
 #include "lib/syscall-nr.h"
 #include "userprog/syscall.h"
+#include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
@@ -177,6 +178,28 @@ tid_t process_execute(const char *file_name)
     palloc_free_page(fn_copy);
   //palloc_free_page(file_name);//maybe in needed
 
+  
+  struct thread *cur = thread_current ();
+  if (cur->pro_child_arr_capacity == 0)
+    {
+      cur->pro_child_arr_capacity = 2;
+      cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
+      ASSERT (cur->pro_child_pro);
+    }
+  ASSERT (cur->pro_child_number <= cur->children_array_capacity);
+  if (cur->pro_child_arr_capacity == cur->pro_child_number)
+    {
+      tid_t *old = cur->pro_child_pro;
+      cur->pro_child_pro =
+          malloc (sizeof (tid_t) * cur->pro_child_arr_capacity * 2);
+      ASSERT (cur->pro_child_pro);
+      for (int i = 0; i < cur->pro_child_arr_capacity; ++i)
+        cur->pro_child_pro[i] = old[i];
+      cur->pro_child_arr_capacity *= 2;
+      free(old);
+    }
+  cur->pro_child_pro[cur->pro_child_number++] = tid;
+
   printf("<5>\n");
   return tid;
 }
@@ -326,7 +349,7 @@ void process_exit(void)
   struct thread *cur = thread_current();
   uint32_t *pd;
 
-  if (cur->exitcode != STATUS_ERROR)
+  if (cur->exitcode != STATUS_ERROR && strlen(cur->name) > 0)
     printf("%s: exit(%d)\n", cur->name, cur->exitcode);
 
   struct list *fd_list = &cur->file_descriptors;
