@@ -152,7 +152,8 @@ page_fault (struct intr_frame *f)
 
   //yn 
   struct thread *cur = thread_current ();
-  if (fault_addr == NULL || !is_user_vaddr(fault_addr))
+  if (fault_addr== NULL || !is_user_vaddr(fault_addr) ||
+          (pagedir_get_page(cur->pagedir, fault_addr)) == NULL)
     {
       cur->exitcode = -1;
       thread_exit ();

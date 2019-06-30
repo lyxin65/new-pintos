@@ -1,5 +1,1 @@
-FAIL tests/userprog/multi-recurse
-FAIL tests/userprog/rox-multichild
 FAIL tests/userprog/no-vm/multi-oom
-FAIL tests/filesys/base/syn-read
-FAIL tests/filesys/base/syn-write

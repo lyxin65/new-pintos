@@ -209,8 +209,10 @@ tid_t process_execute(const char *file_name)
       return -1;
   }
 
+  __debug("waitting!!\n");
   // waiting for start up
   sema_down(&entry->sema_start);
+  __debug("end!!\n");
 
   if (entry->tid >= 0) {
       struct thread *cur = thread_current ();
@@ -310,10 +312,12 @@ start_process(void *entry_)
       entry->exitcode = STATUS_ERROR;
   }
 
-  lock_acquire(&table_lock);
-  bool insert_success = insert_pro(cur->tid, entry);
-  ASSERT(insert_success);
-  lock_release(&table_lock);
+  if (success) {
+      lock_acquire(&table_lock);
+      bool insert_success = insert_pro(cur->tid, entry);
+      ASSERT(insert_success);
+      lock_release(&table_lock);
+  }
 
   sema_up(&entry->sema_start);
 
@@ -617,8 +621,6 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
           read_bytes = 0;
           zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
         }
-        __debug("%s %d %d\n", file_name, read_bytes, zero_bytes);
-        __debug("%d %d %d\n", page_offset, phdr.p_filesz, zero_bytes);
         if (!load_segment(file, file_page, (void *)mem_page,
                           read_bytes, zero_bytes, writable)) // TODO check why error
           goto done;
