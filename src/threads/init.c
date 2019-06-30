@@ -77,6 +77,7 @@ int
 pintos_init (void)
 {
   char **argv;
+  boot_up_flag = false;
 
   /* Clear BSS. */  
   bss_init ();
@@ -118,6 +119,7 @@ pintos_init (void)
 
   /* Start thread scheduler and enable interrupts. */
   thread_start ();
+  boot_up_flag = true;
   serial_init_queue ();
   timer_calibrate ();
 

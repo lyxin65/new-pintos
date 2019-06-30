@@ -136,6 +136,8 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+bool boot_up_flag; // used for sema_up
+
 void thread_init (void);
 void thread_start (void);
 
