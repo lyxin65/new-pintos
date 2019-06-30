@@ -23,6 +23,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define NICE_MIN -20
+#define NICE_DEFAULT 0
+#define NICE_MAX 20
 
 /* A kernel thread or user process.
 
@@ -88,7 +91,8 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-    int old_priority;                   /* add for priority donate */
+    int old_priority;                   /* Add for priority donation */
+    bool is_donated;                       /* Add for priority donation */
     struct list_elem allelem;           /* List element for all threads list. */
     struct list_elem wait_elem;         /* add for waiting list */
     struct list_elem lock_elem;         /* add for locks list */
@@ -99,6 +103,10 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
+    /* Add for mlfqs option */
+    int recent_cpu;
+    int nice;
 
 /*modified by yn begin */
 #ifdef USERPROG

@@ -14,6 +14,8 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+#include "devices/timer.h"
+#include "threads/fixed-point.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -39,6 +41,8 @@ static struct thread *initial_thread;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
+
+static int load_avg;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -83,6 +87,50 @@ static bool cmp_greater_priority(const struct list_elem *a,
     return lhs->priority > rhs->priority;
 }
 
+static void calc_load_avg() {
+    // load_avg = (59/60)*load_avg + (1/60)*ready_threads;
+    struct thread *t = thread_current();
+    ASSERT(is_thread(t));
+    int ready_threads = list_size(&ready_list) + (t != idle_thread);
+    load_avg = fp_add(fp_mul(fp_div_int(itofp(59), 60), load_avg),
+                        fp_mul_int(fp_div_int(itofp(1), 60), ready_threads));
+}
+
+
+static void calc_recent_cpu(struct thread *t, void *aux UNUSED) {
+    ASSERT(is_thread(t));
+    if (t != idle_thread) {
+        int load = fp_mul_int(load_avg, 2);
+        int coef = fp_div(load, fp_add_int(load, 1));
+        t->recent_cpu = fp_add_int(fp_mul(coef, t->recent_cpu), t->nice);
+    }
+}
+
+static void calc_priority(struct thread *t, void *aux UNUSED) {
+    ASSERT(false);
+    ASSERT(is_thread(t));
+    if (t != idle_thread) {
+        t->priority = PRI_MAX - fptoi(fp_div_int(t->recent_cpu, 4)) - t->nice * 2;
+        if (t->priority < PRI_MIN) {
+            t->priority = PRI_MIN;
+        }
+        if (t->priority > PRI_MAX) {
+            t->priority = PRI_MAX;
+        }
+    }
+}
+
+static void thread_calc_recent_cpu_all() {
+    thread_foreach(calc_recent_cpu, NULL);
+}
+
+static void thread_calc_priority_all() {
+    thread_foreach(calc_priority, NULL);
+    if (!list_empty(&ready_list)) {
+        list_sort(&ready_list, cmp_greater_priority, NULL);
+    }
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -114,14 +162,16 @@ thread_init (void)
   initial_thread->time_to_sleep = 0;
 
   /*modified by yn begin*/
-  #ifdef USERPROG
-      initial_thread->pro_child_number = 0;
-      initial_thread->pro_child_arr_capacity = 0;
-      initial_thread->pro_child_pro = NULL;
-      list_init (&initial_thread->file_descriptors);
-      initial_thread->executing_file = NULL;
-  #endif
+#ifdef USERPROG
+  initial_thread->pro_child_number = 0;
+  initial_thread->pro_child_arr_capacity = 0;
+  initial_thread->pro_child_pro = NULL;
+  list_init (&initial_thread->file_descriptors);
+  initial_thread->executing_file = NULL;
+#endif
   /*modified by yn end*/
+
+  load_avg = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -158,6 +208,22 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  if (thread_mlfqs) {
+      int ticks = idle_ticks + kernel_ticks;
+#ifdef USERPROG
+      ticks += user_ticks;
+#endif
+      if (t->status == THREAD_RUNNING) {
+          t->recent_cpu = fp_add_int(t->recent_cpu, 1);
+      }
+      if (ticks % TIMER_FREQ == 0) {
+          calc_load_avg();
+          thread_calc_recent_cpu_all();
+      }
+      if (ticks % 4 == 0) {
+          //thread_calc_priority_all();
+      }
+  }
   thread_awake();
 
   /* Enforce preemption. */
@@ -208,6 +274,9 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  // add for mlfqs option
+  t->nice = thread_get_nice();
+  t->recent_cpu = thread_get_recent_cpu();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -227,7 +296,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (priority > thread_current()->priority) {
+  if (priority > thread_current()->priority) { // still useful if current thread is idle.
       thread_yield();
   }
 
@@ -410,9 +479,9 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+    ASSERT(!thread_mlfqs);
     struct thread *t = thread_current();
-    if (t->priority == t->old_priority) { // case of NO donation
-        // TODO this condition may cause bug
+    if (!t->is_donated) { // case of NO donation
         t->priority = t->old_priority = new_priority;
     } else { // case of donation
         t->old_priority = new_priority;
@@ -426,6 +495,8 @@ thread_set_priority (int new_priority)
 }
 
 void thread_donate_priority(struct thread *t, int new_priority) {
+    ASSERT(!thread_mlfqs);
+    t->is_donated = true;
     t->priority = new_priority; /* donation */
     if (t == thread_current() && !list_empty(&ready_list)) {
         struct thread *next = list_entry(list_begin(&ready_list), struct thread, elem);
@@ -453,24 +524,21 @@ thread_set_nice (int nice UNUSED)
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fptoi(fp_mul_int(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fptoi(fp_mul_int(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -563,6 +631,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->wait_lock = NULL;
   list_init(&t->locks);
   t->time_to_sleep = 0;
+
+  t->nice = NICE_DEFAULT;
+  t->recent_cpu = 0;
+
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
