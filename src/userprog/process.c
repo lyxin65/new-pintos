@@ -238,6 +238,7 @@ tid_t process_execute(const char *file_name)
   }
 
   if (thread_name) palloc_free_page(thread_name);
+  if (fn_copy) palloc_free_page(fn_copy);
   __debug("end of exec filename: %s\n", file_name);
   return entry->tid;
 }
@@ -340,10 +341,6 @@ start_process(void *entry_)
   NOT_REACHED();
 }
 
-
-
-
-
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -429,6 +426,9 @@ void process_exit(void)
   for (int i = 0; i < cur->pro_child_number; ++i)
     erase_tid(cur->pro_child_pro[i]);
   lock_release(&table_lock);
+  free(cur->pro_child_pro);
+  cur->pro_child_pro = NULL;
+  cur->pro_child_arr_capacity = 0;
 
   /* Release file for the executable */
   if (cur->executing_file)
