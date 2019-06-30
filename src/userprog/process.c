@@ -419,10 +419,8 @@ void process_exit(void)
   /* Release file for the executable */
   if (cur->executing_file)
   {
-    lock_acquire(lock_for_fs);
     file_allow_write(cur->executing_file);
     file_close(cur->executing_file);
-    lock_release(lock_for_fs);
   }
 
   /* Destroy the current process's page directory and switch back
@@ -627,10 +625,8 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
   *eip = (void (*)(void))ehdr.e_entry;
 
   /* Deny writes to executables. */
-  lock_acquire(lock_for_fs);
   file_deny_write(file);
   thread_current()->executing_file = file;
-  lock_release(lock_for_fs);
   success = true;
 
 done:
