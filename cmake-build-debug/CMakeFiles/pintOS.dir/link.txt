@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/pintOS.dir/main.cpp.o CMakeFiles/pintOS.dir/src/vm/pagetable.c.o  -o pintOS 

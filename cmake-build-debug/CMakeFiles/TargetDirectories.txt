@@ -1,0 +1,3 @@
+/home/acmzms/CLionProjects/pintOS/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/acmzms/CLionProjects/pintOS/cmake-build-debug/CMakeFiles/pintOS.dir
+/home/acmzms/CLionProjects/pintOS/cmake-build-debug/CMakeFiles/edit_cache.dir
