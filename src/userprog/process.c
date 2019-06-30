@@ -27,7 +27,6 @@
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 
-//#define DEBUG
 #ifdef DEBUG
 #define __debug(...) printf(__VA_ARGS__)
 #else
@@ -92,7 +91,7 @@ static struct pro_entry *tid_to_process(tid_t tid)
 static struct pro_entry *new_entry(char *file_)
 {
   struct pro_entry *res = malloc(sizeof(struct pro_entry));
-  ASSERT(res);
+  if (res == NULL) return NULL;
   res->tid = -1; // UNDEFINED
   res->exitcode = STATUS_START; 
   res->waiting = false;
@@ -172,22 +171,32 @@ tid_t process_execute(const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  __debug("filename: %s\n", file_name);
+  __debug("start to exec filename: %s\n", file_name);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page(0);
-  if (fn_copy == NULL)
+  if (fn_copy == NULL) {
     return TID_ERROR;                  //-1
+  }
   strlcpy(fn_copy, file_name, PGSIZE); //file_name baocuole shenqi
                                        //PGSIZE :1 <<12
 
   char *thread_name, *the_left;
   thread_name = palloc_get_page(0);
+  if (thread_name == NULL) {
+      palloc_free_page(fn_copy);
+      return TID_ERROR;
+  }
   strlcpy(thread_name, file_name, PGSIZE);
   thread_name = strtok_r (thread_name, " ", &the_left);
 
   struct pro_entry *entry = new_entry(fn_copy);
+  if (entry == NULL) {
+      palloc_free_page(fn_copy);
+      palloc_free_page(thread_name);
+      return TID_ERROR;
+  }
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create(thread_name, PRI_DEFAULT, start_process, entry);
@@ -196,40 +205,39 @@ tid_t process_execute(const char *file_name)
   if (tid == TID_ERROR) {
       palloc_free_page(fn_copy);
       palloc_free_page(thread_name);
+      free(entry);
       return -1;
   }
 
-  // watiting for start up
+  // waiting for start up
   sema_down(&entry->sema_start);
 
-//  __debug("<8>\n");
-  struct thread *cur = thread_current ();
-  if (cur->pro_child_arr_capacity == 0)
-    {
-      cur->pro_child_arr_capacity = 2;
-      cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
-      ASSERT (cur->pro_child_pro);
-    }
-//  __debug("<9>\n");
-  ASSERT (cur->pro_child_number <= cur->pro_child_arr_capacity);
-  if (cur->pro_child_arr_capacity == cur->pro_child_number)
-    {
-      tid_t *old = cur->pro_child_pro;
-      cur->pro_child_pro =
-          malloc (sizeof (tid_t) * cur->pro_child_arr_capacity * 2);
-      ASSERT (cur->pro_child_pro);
-      for (int i = 0; i < cur->pro_child_arr_capacity; ++i)
-        cur->pro_child_pro[i] = old[i];
-      cur->pro_child_arr_capacity *= 2;
-      free(old);
-    }
-  cur->pro_child_pro[cur->pro_child_number++] = tid;
-  __debug("<10>\n");
+  if (entry->tid >= 0) {
+      struct thread *cur = thread_current ();
+      if (cur->pro_child_arr_capacity == 0)
+      {
+          cur->pro_child_arr_capacity = 2;
+          cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
+          ASSERT (cur->pro_child_pro);
+      }
+      ASSERT (cur->pro_child_number <= cur->pro_child_arr_capacity);
+      if (cur->pro_child_arr_capacity == cur->pro_child_number)
+      {
+          tid_t *old = cur->pro_child_pro;
+          cur->pro_child_pro =
+              malloc (sizeof (tid_t) * cur->pro_child_arr_capacity * 2);
+          ASSERT (cur->pro_child_pro);
+          for (int i = 0; i < cur->pro_child_arr_capacity; ++i)
+              cur->pro_child_pro[i] = old[i];
+          cur->pro_child_arr_capacity *= 2;
+          free(old);
+      }
+      cur->pro_child_pro[cur->pro_child_number++] = entry->tid;
+  }
 
   if (thread_name) palloc_free_page(thread_name);
-  //__debug("[debug] status: %d\n", status);
-  __debug("created filename: %s\n", file_name);
-  return tid;
+  __debug("end of exec filename: %s\n", file_name);
+  return entry->tid;
 }
 
 /* A thread function that loads a user process and starts it
@@ -294,8 +302,13 @@ start_process(void *entry_)
   /* If load failed, quit. */
 
   struct thread *cur = thread_current();
-  entry->tid = cur->tid;
-  entry->exitcode = STATUS_RUNNING;
+  if (success) {
+      entry->tid = cur->tid;
+      entry->exitcode = STATUS_RUNNING;
+  } else {
+      entry->tid = TID_ERROR;
+      entry->exitcode = STATUS_ERROR;
+  }
 
   lock_acquire(&table_lock);
   bool insert_success = insert_pro(cur->tid, entry);
@@ -307,9 +320,7 @@ start_process(void *entry_)
   if (!success)
   {
       __debug("load fail!!");
-    cur->exitcode = STATUS_ERROR;
-    entry->exitcode = STATUS_ERROR;
-    thread_exit();
+      sys_exit(-1);
   }
 
   /* Start the user process by simulating a return from an
@@ -606,12 +617,15 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
           read_bytes = 0;
           zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
         }
+        __debug("%s %d %d\n", file_name, read_bytes, zero_bytes);
+        __debug("%d %d %d\n", page_offset, phdr.p_filesz, zero_bytes);
         if (!load_segment(file, file_page, (void *)mem_page,
-                          read_bytes, zero_bytes, writable))
+                          read_bytes, zero_bytes, writable)) // TODO check why error
           goto done;
       }
-      else
+      else {
         goto done;
+      }
       break;
     }
   }

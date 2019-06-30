@@ -30,6 +30,25 @@ static int get_user(const uint8_t *uaddr);
 static bool put_user(uint8_t *udst, uint8_t byte);
 static void syscall_handler(struct intr_frame *);
 
+static void fail_invalid_access(void) {
+  if (lock_held_by_current_thread(&lock_for_fs))
+    lock_release (&lock_for_fs);
+
+  sys_exit (-1);
+  NOT_REACHED();
+}
+static void boundary_check(const void *uaddr)
+{
+  struct thread *cur = thread_current();
+  if (uaddr == NULL || !is_user_vaddr(uaddr) ||
+          (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
+      sys_exit(-1);
+
+  // check uaddr range or segfaults
+  if(get_user (uaddr) == -1)
+    fail_invalid_access();
+}
+
 /* modified by YN  begin*/
 //file_system_lock      must have only one threads in the file system at any time
 
@@ -41,17 +60,6 @@ void syscall_init(void)
 /* modified by YN  end*/
 
 /* modified by YN  begin*/
-//static void boundary_check(const uint8_t *uaddr);
-
-// in case of invalid memory access, fail and exit.
-static void fail_invalid_access(void) {
-  if (lock_held_by_current_thread(&lock_for_fs))
-    lock_release (&lock_for_fs);
-
-  sys_exit (-1);
-  NOT_REACHED();
-}
-
 
 struct file_descriptor *get_fd(struct thread *, int);
 
@@ -140,18 +148,6 @@ void sys_exit(int status)
 {
   thread_current()->exitcode = status;
   thread_exit();
-}
-
-void boundary_check(const void *uaddr)
-{
-  struct thread *cur = thread_current();
-  if (uaddr == NULL || !is_user_vaddr(uaddr) ||
-          (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
-      sys_exit(-1);
-
-  // check uaddr range or segfaults
-  if(get_user (uaddr) == -1)
-    fail_invalid_access();
 }
 
 static void
