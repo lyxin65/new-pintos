@@ -7,6 +7,7 @@
 /*modified by lyx begin */
 #define STATUS_ERROR -2
 #define STATUS_RUNNING -3
+#define STATUS_START -4
 
 void process_init (void);
 /*modified by lyx end */

@@ -27,7 +27,7 @@
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define __debug(...) printf(__VA_ARGS__)
 #else
@@ -39,6 +39,9 @@ struct pro_entry
   tid_t tid;
   int exitcode;
   bool waiting;
+  char *file_name_;
+  struct semaphore sema_start;
+  struct semaphore sema_exit;
   struct condition cond;
   struct lock lk;
 };
@@ -86,10 +89,25 @@ static struct pro_entry *tid_to_process(tid_t tid)
   return process_table[i];
 }
 
+static struct pro_entry *new_entry(char *file_)
+{
+  struct pro_entry *res = malloc(sizeof(struct pro_entry));
+  ASSERT(res);
+  res->tid = -1; // UNDEFINED
+  res->exitcode = STATUS_START; 
+  res->waiting = false;
+  res->file_name_ = file_;
+  cond_init(&res->cond);
+  lock_init(&res->lk);
+  sema_init(&res->sema_start, 0);
+  sema_init(&res->sema_exit, 0);
+  return res;
+}
+/*
 static struct pro_entry *make_entry(tid_t tid)
 {
   struct pro_entry *res = malloc(sizeof(struct pro_entry));
-  ASSERT(res)
+  ASSERT(res);
   res->tid = tid;
   res->exitcode = STATUS_RUNNING;
   res->waiting = false;
@@ -97,7 +115,7 @@ static struct pro_entry *make_entry(tid_t tid)
   lock_init(&res->lk);
   return res;
 }
-
+*/
 static bool insert_pro(tid_t tid, struct pro_entry *entry)
 {
   ASSERT(tid_to_process(tid) == NULL)
@@ -158,49 +176,37 @@ tid_t process_execute(const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  __debug("<1>\n");
   fn_copy = palloc_get_page(0);
   if (fn_copy == NULL)
     return TID_ERROR;                  //-1
   strlcpy(fn_copy, file_name, PGSIZE); //file_name baocuole shenqi
                                        //PGSIZE :1 <<12
 
-  __debug("<2>\n");
   char *thread_name, *the_left;
   thread_name = palloc_get_page(0);
   strlcpy(thread_name, file_name, PGSIZE);
   thread_name = strtok_r (thread_name, " ", &the_left);
 
-  __debug("<3>\n");
+  struct pro_entry *entry = new_entry(fn_copy);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create(thread_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create(thread_name, PRI_DEFAULT, start_process, entry);
  // __debug("---[debug]--- tid=%d\n", tid);
 
-  __debug("<4>\n");
-  lock_acquire(&table_lock);
-  while (tid_to_process(tid) == NULL)
-    cond_wait(&lock_cond, &table_lock);
-  __debug("<5>\n");
-  int status = tid_to_process(tid)->exitcode;
-  lock_release(&table_lock);
-
-//  __debug("<6>\n");
-  if (status == STATUS_ERROR) {
-      __debug("---[debug]--- TID ERROR!!!!\n");
-    return TID_ERROR;
+  if (tid == TID_ERROR) {
+      palloc_free_page(fn_copy);
+      palloc_free_page(thread_name);
+      return -1;
   }
 
-//  __debug("<7>\n");
-  if (tid == TID_ERROR)
-    palloc_free_page(fn_copy);
-  //palloc_free_page(file_name);//maybe in needed
+  // watiting for start up
+  sema_down(&entry->sema_start);
 
-  
 //  __debug("<8>\n");
   struct thread *cur = thread_current ();
   if (cur->pro_child_arr_capacity == 0)
     {
-      cur->pro_child_arr_capacity = 10;
+      cur->pro_child_arr_capacity = 2;
       cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
       ASSERT (cur->pro_child_pro);
     }
@@ -229,9 +235,10 @@ tid_t process_execute(const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process(void *file_name_)
+start_process(void *entry_)
 {
-  char *file_name = file_name_;
+  struct pro_entry *entry = entry_;
+  char *file_name = entry->file_name_;
   struct intr_frame if_;
   bool success;
 
@@ -285,16 +292,17 @@ start_process(void *file_name_)
   }
 
   /* If load failed, quit. */
-  //palloc_free_page(file_name);
 
   struct thread *cur = thread_current();
-  struct pro_entry *entry = make_entry(cur->tid);
+  entry->tid = cur->tid;
+  entry->exitcode = STATUS_RUNNING;
 
   lock_acquire(&table_lock);
   bool insert_success = insert_pro(cur->tid, entry);
   ASSERT(insert_success);
-  cond_broadcast(&lock_cond, &table_lock);
   lock_release(&table_lock);
+
+  sema_up(&entry->sema_start);
 
   if (!success)
   {
@@ -303,6 +311,7 @@ start_process(void *file_name_)
     entry->exitcode = STATUS_ERROR;
     thread_exit();
   }
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -331,8 +340,6 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-  //while (true)
-   // ;
   //make it loop forever 
   //dont know if right
   struct thread *cur = thread_current();
@@ -364,16 +371,10 @@ int process_wait(tid_t child_tid UNUSED)
   }
 
   __debug("---[debug]--- waitting!\n");
-  lock_acquire(&entry->lk);
-  while (entry->exitcode == STATUS_RUNNING)
-  {
-    ASSERT(intr_get_level() == INTR_ON);
-    cond_wait(&entry->cond, &entry->lk);
-  }
+  sema_down(&entry->sema_exit);
   __debug("---[debug]--- child exit!\n");
   int exitcode = entry->exitcode;
   //entry->exitcode = -1;
-  lock_release(&entry->lk);
 
   return exitcode;
 }
@@ -403,12 +404,10 @@ void process_exit(void)
 
   if (entry)
   {
-    lock_acquire(&entry->lk);
     ASSERT(entry->exitcode == STATUS_RUNNING ||
            entry->exitcode == STATUS_ERROR);
     entry->exitcode = cur->exitcode;
-    cond_broadcast(&entry->cond, &entry->lk);
-    lock_release(&entry->lk);
+    sema_up(&entry->sema_exit);
   }
 
   lock_acquire(&table_lock);
@@ -419,7 +418,7 @@ void process_exit(void)
   /* Release file for the executable */
   if (cur->executing_file)
   {
-    file_allow_write(cur->executing_file);
+    //file_allow_write(cur->executing_file);
     file_close(cur->executing_file);
   }
 
