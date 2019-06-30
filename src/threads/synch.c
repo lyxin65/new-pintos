@@ -390,7 +390,6 @@ static bool cmp_greater_thread_priority(const struct list_elem *a, const struct 
     ASSERT(a != NULL && b != NULL);
     const struct thread *lhs = list_entry(a, struct thread, elem);
     const struct thread *rhs = list_entry(b, struct thread, elem);
-    printf("\n\n\n%s %s\n\n\n", lhs->name, rhs->name);
     return lhs->priority > rhs->priority;
 }
 

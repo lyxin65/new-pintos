@@ -257,7 +257,7 @@ void thread_awake(void)
     ASSERT(intr_get_level() == INTR_OFF);
     for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, wait_elem);
-        if (--t->time_to_sleep == 0) {
+        if (--t->time_to_sleep <= 0) {
             list_remove(&t->wait_elem);
             thread_unblock(t);
         }

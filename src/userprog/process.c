@@ -27,6 +27,7 @@
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 
+#define DEBUG
 #ifdef DEBUG
 #define __debug(...) printf(__VA_ARGS__)
 #else
@@ -37,6 +38,7 @@ struct pro_entry
 {
   tid_t tid;
   int exitcode;
+  bool waiting;
   struct condition cond;
   struct lock lk;
 };
@@ -90,6 +92,7 @@ static struct pro_entry *make_entry(tid_t tid)
   ASSERT(res)
   res->tid = tid;
   res->exitcode = STATUS_RUNNING;
+  res->waiting = false;
   cond_init(&res->cond);
   lock_init(&res->lk);
   return res;
@@ -155,45 +158,53 @@ tid_t process_execute(const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
+  __debug("<1>\n");
   fn_copy = palloc_get_page(0);
   if (fn_copy == NULL)
     return TID_ERROR;                  //-1
   strlcpy(fn_copy, file_name, PGSIZE); //file_name baocuole shenqi
                                        //PGSIZE :1 <<12
 
+  __debug("<2>\n");
   char *thread_name, *the_left;
   thread_name = palloc_get_page(0);
   strlcpy(thread_name, file_name, PGSIZE);
   thread_name = strtok_r (thread_name, " ", &the_left);
 
+  __debug("<3>\n");
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create(thread_name, PRI_DEFAULT, start_process, fn_copy);
+ // __debug("---[debug]--- tid=%d\n", tid);
 
-  __debug("<1>\n");
+  __debug("<4>\n");
   lock_acquire(&table_lock);
-  __debug("<2>\n");
   while (tid_to_process(tid) == NULL)
     cond_wait(&lock_cond, &table_lock);
-  __debug("<3>\n");
+  __debug("<5>\n");
   int status = tid_to_process(tid)->exitcode;
   lock_release(&table_lock);
-  __debug("<4>\n");
 
-  if (status == STATUS_ERROR)
+//  __debug("<6>\n");
+  if (status == STATUS_ERROR) {
+      __debug("---[debug]--- TID ERROR!!!!\n");
     return TID_ERROR;
+  }
 
+//  __debug("<7>\n");
   if (tid == TID_ERROR)
     palloc_free_page(fn_copy);
   //palloc_free_page(file_name);//maybe in needed
 
   
+//  __debug("<8>\n");
   struct thread *cur = thread_current ();
   if (cur->pro_child_arr_capacity == 0)
     {
-      cur->pro_child_arr_capacity = 2;
+      cur->pro_child_arr_capacity = 10;
       cur->pro_child_pro = malloc(cur->pro_child_arr_capacity * sizeof(tid_t));
       ASSERT (cur->pro_child_pro);
     }
+//  __debug("<9>\n");
   ASSERT (cur->pro_child_number <= cur->pro_child_arr_capacity);
   if (cur->pro_child_arr_capacity == cur->pro_child_number)
     {
@@ -207,9 +218,11 @@ tid_t process_execute(const char *file_name)
       free(old);
     }
   cur->pro_child_pro[cur->pro_child_number++] = tid;
+  __debug("<10>\n");
 
   if (thread_name) palloc_free_page(thread_name);
-  __debug("<5>\n");
+  //__debug("[debug] status: %d\n", status);
+  __debug("created filename: %s\n", file_name);
   return tid;
 }
 
@@ -285,6 +298,7 @@ start_process(void *file_name_)
 
   if (!success)
   {
+      __debug("load fail!!");
     cur->exitcode = STATUS_ERROR;
     entry->exitcode = STATUS_ERROR;
     thread_exit();
@@ -323,6 +337,7 @@ int process_wait(tid_t child_tid UNUSED)
   //dont know if right
   struct thread *cur = thread_current();
   bool found = false;
+  __debug("number of child: %d\n", cur->pro_child_number);
   for (int i = 0; i < cur->pro_child_number; ++i)
   {
     if (cur->pro_child_pro[i] == child_tid)
@@ -331,22 +346,33 @@ int process_wait(tid_t child_tid UNUSED)
       break;
     }
   }
-  if (!found)
+  if (!found) {
+      __debug("---[debug]--- child not found!\n");
     return -1;
+  }
+  __debug("---[debug]--- child founded!\n");
 
   lock_acquire(&table_lock);
   struct pro_entry *entry = tid_to_process(child_tid);
   ASSERT(entry);
   lock_release(&table_lock);
 
+  if (entry->waiting) {
+      return -1;
+  } else {
+      entry->waiting = true;
+  }
+
+  __debug("---[debug]--- waitting!\n");
   lock_acquire(&entry->lk);
   while (entry->exitcode == STATUS_RUNNING)
   {
     ASSERT(intr_get_level() == INTR_ON);
     cond_wait(&entry->cond, &entry->lk);
   }
+  __debug("---[debug]--- child exit!\n");
   int exitcode = entry->exitcode;
-  entry->exitcode = -1;
+  //entry->exitcode = -1;
   lock_release(&entry->lk);
 
   return exitcode;
@@ -367,9 +393,7 @@ void process_exit(void)
     struct list_elem *tmp = list_front(fd_list);
     struct file_descriptor *fd = list_entry(tmp, struct file_descriptor, elem);
     list_pop_front(fd_list);
-    lock_acquire(&lock_for_fs);
     file_close(fd->file);
-    lock_release(&lock_for_fs);
     free(fd);
   }
 
@@ -608,7 +632,9 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
 
 done:
   /* We arrive here whether the load is successful or not. */
-  //file_close(file);
+
+  // we will close it when exit
+ // file_close(file);
   return success;
 }
 

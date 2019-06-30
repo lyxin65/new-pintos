@@ -79,6 +79,9 @@ struct file_descriptor *get_fd(struct thread *t, int fd_num)
 static int num_of_args(const char *esp, int args[])
 {
   int argc;
+  boundary_check((const uint8_t*)(esp));
+  boundary_check((const uint8_t*)(esp + 1));
+  boundary_check((const uint8_t*)(esp + 2));
   boundary_check((const uint8_t*)(esp + 3)); //maybe check all is a must
 
   int sys_num = *(int *)esp;
@@ -112,6 +115,9 @@ static int num_of_args(const char *esp, int args[])
   for (int i = 0; i < argc; ++i)
   {
     const int *addr = (const int *)(esp + 4 * i);
+    boundary_check((const uint8_t*)(addr));
+    boundary_check((const uint8_t*)(addr + 1)); 
+    boundary_check((const uint8_t*)(addr + 2));
     boundary_check((const uint8_t*)(addr + 3));
     args[i] = *addr;
   }
@@ -151,8 +157,8 @@ void boundary_check(const void *uaddr)
 static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
-    __debug("syscall_handler\n");
-    __debug("name: %s\n", thread_current()->name);
+  __debug("calling ");
+  //  __debug("name: %s\n", thread_current()->name);
 
   char *esp = f->esp;
 
@@ -226,37 +232,34 @@ syscall_handler(struct intr_frame *f UNUSED)
 pid_t sys_exec(const char *cmd_line)
 {
   boundary_check((const uint8_t*)(cmd_line));
+  boundary_check((const uint8_t*)(cmd_line + 1));
+  boundary_check((const uint8_t*)(cmd_line + 2));
+  boundary_check((const uint8_t*)(cmd_line + 3));
+  __debug("waitting for fs lock\n");
   lock_acquire(&lock_for_fs);
+  __debug("..got it!!\n");
   pid_t pid = process_execute(cmd_line);
   lock_release(&lock_for_fs);
-  if (pid == TID_ERROR)
+  __debug("releasing fs lock!!\n");
+  if (pid == TID_ERROR) {
     return -1;
+  }
   return pid;
 }
 
 int sys_wait(pid_t pid)
 {
-  lock_acquire(&lock_for_fs);
   int id = process_wait(pid);
-  lock_release(&lock_for_fs);
   return id;
 }
 
 bool sys_create(const char *file, unsigned initial_size)
 {
-    bool success = false;
-    __debug("<<1>>\n");
+  bool success = false;
   boundary_check((const uint8_t*)file);
-    __debug("<<2>>\n");
   lock_acquire(&lock_for_fs);
-    __debug("<<3>>\n");
-  __debug("file: %s %d\n", file, initial_size);
-  __debug("holder: %s\n", lock_for_fs.holder->name);
   success = filesys_create(file, initial_size);
-  __debug("success: %d\n", success);
-    __debug("<<4>>\n");
   lock_release(&lock_for_fs);
-    __debug("<<5>>\n");
   return success;
 }
 
