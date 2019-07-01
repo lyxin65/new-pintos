@@ -4,7 +4,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#inclide "swapslot.c"
+#inclide "vm/swapslot.c"
 #include "threads/vaddr.h"
 
 /* Number of page faults processed. */

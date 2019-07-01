@@ -21,8 +21,8 @@ void init(int size)
 void swap_in(int pos)
 {
     struct block *swap_block;
-    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
     swap_block = block_get_role (BLOCK_SWAP);
+    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
     int k;
     for(k = 0;k < size;k++)
     {
@@ -34,15 +34,15 @@ void swap_in(int pos)
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_write(swap_block, k * bpp + i, buffer);
+        block_write(swap_block, k * bpp + i, buffer + i * swap_block->size);
     }
 }
 
 void swap_out(int pos)
 {
     struct block *swap_block;
-    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
     swap_block = block_get_role (BLOCK_SWAP);
+    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
     int k;
     for(k = 0;k < size;k++)
     {
@@ -54,7 +54,7 @@ void swap_out(int pos)
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_read(swap_block, k * bpp + i, buffer);
+        block_read(swap_block, k * bpp + i, buffer + i * swap_block->size);
     }
 }
 

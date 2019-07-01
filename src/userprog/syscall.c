@@ -6,7 +6,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "user/syscall.h"
-
+#include "vm/suplpagetable.c"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
 #include "filesys/filesys.h"
@@ -427,11 +427,25 @@ put_user (uint8_t *udst, uint8_t byte)
 }
 
 
+mapid_t sys_mmap(int fd, void *addr)
+{
+    int va = *addr;
+    int len = filesize(fd);
+    if(len == 0 || va % PGSIZE != 0 || va == 0 || fd == 0 || fd == 1)
+    {
+        return -1;
+    }
+    return add_file(fd, va, len);
+}
+
+void munmap (mapid_t mapping)
+{
+  rem_file(mapping);
+}
 
 
 
-
-/* modified by YN  end*/
+/* modified by YN and ZMS  end*/
 
 //printf ("system call!\n");
 //thread_exit ();
