@@ -3,8 +3,11 @@
 //
 
 #pragma once
+
+#include "frametable.c"
 #define BLOCKS_PER_PAGE = /block.size
 int* slot;
+void* buffer;
 
 void init(int size)
 {
@@ -15,7 +18,7 @@ void init(int size)
     }
 }
 
-void swap_in(int pos, const void* buffer)
+void swap_in(int pos)
 {
     struct block *swap_block;
     int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
@@ -31,11 +34,11 @@ void swap_in(int pos, const void* buffer)
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_write(swap_block, pos * bpp + i, buffer);
+        block_write(swap_block, k * bpp + i, buffer);
     }
 }
 
-void swap_out(int pos, void* buffer)
+void swap_out(int pos)
 {
     struct block *swap_block;
     int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
@@ -45,13 +48,27 @@ void swap_out(int pos, void* buffer)
     {
         if(slot[k] != -1)
         {
+            slot[k] = -1;
             break;
         }
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_read(swap_block, pos * bpp + i, buffer);
+        block_read(swap_block, k * bpp + i, buffer);
     }
+}
+
+void frame_in(int pos)
+{
+    void* p = create_frame(pos);
+    swap_out(pos);
+    memcpy(p, buffer, PGSIZE);
+}
+
+void frame_out(void* page, int pos)
+{
+    memcpy(buffer, page, PGSIZE);
+    swap_in(pos);
 }
 
 void free(int pos)
