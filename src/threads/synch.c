@@ -115,6 +115,7 @@ void
 sema_up (struct semaphore *sema) 
 {
   enum intr_level old_level;
+  struct thread *t = NULL;
 
   ASSERT (sema != NULL);
 
@@ -124,10 +125,18 @@ sema_up (struct semaphore *sema)
 
   if (!list_empty (&sema->waiters)) {
     list_sort(&sema->waiters, cmp_greater_thread_priority, NULL);
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
+    thread_unblock (t = list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
   }
   intr_set_level (old_level);
+
+  if (boot_up_flag) {
+      if (intr_context()) {
+          intr_yield_on_return();
+      } else if (t != NULL && thread_get_priority() < t->priority) {
+          thread_yield();
+      }
+  }
 }
 
 static void sema_test_helper (void *sema_);
@@ -358,7 +367,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  waiter.semaphore.priority = thread_current()->priority;
+  waiter.priority = thread_current()->priority;
   list_insert_ordered(&cond->waiters, &waiter.elem, cmp_greater_sema_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
@@ -419,5 +428,5 @@ static bool cmp_greater_sema_priority(const struct list_elem *a, const struct li
     ASSERT(a != NULL && b != NULL);
     const struct semaphore_elem *lhs = list_entry(a, struct semaphore_elem, elem);
     const struct semaphore_elem *rhs = list_entry(b, struct semaphore_elem, elem);
-    return lhs->semaphore.priority > rhs->semaphore.priority;
+    return lhs->priority > rhs->priority;
 }
