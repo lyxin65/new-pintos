@@ -443,7 +443,7 @@ mapid_t sys_mmap(int fd, void *addr)
     if(addr == NULL || pg_ofs(addr) == NULL ) 
       return -1;          //map failed
 
-    int va = *addr;
+    int va = *((int*)addr);
     int len = filesize(fd);
     if(len == 0 || va % PGSIZE != 0 || va == 0 || fd < 3)
     {

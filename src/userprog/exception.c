@@ -4,7 +4,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#inclide "vm/swapslot.c"
+#include "vm/swapslot.c"
 #include "threads/vaddr.h"
 
 /* Number of page faults processed. */
@@ -163,7 +163,7 @@ page_fault (struct intr_frame *f)
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  int pos = fault_addr / PGSIZE;
+  int pos = *((int*)fault_addr) / PGSIZE;
   frame_in(pos);
   /*printf ("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
