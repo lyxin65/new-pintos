@@ -429,7 +429,7 @@ put_user (uint8_t *udst, uint8_t byte)
 
 mapid_t sys_mmap(int fd, void *addr)
 {
-    int va = *addr;
+    int va = *((int*)addr);
     int len = filesize(fd);
     if(len == 0 || va % PGSIZE != 0 || va == 0 || fd == 0 || fd == 1)
     {
@@ -438,7 +438,7 @@ mapid_t sys_mmap(int fd, void *addr)
     return add_file(fd, va, len);
 }
 
-void munmap (mapid_t mapping)
+void sys_munmap (mapid_t mapping)
 {
   rem_file(mapping);
 }

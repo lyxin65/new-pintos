@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "frametable.h"
+#include "frametable.c"
 #include "threads/vaddr.h"
 #include "devices/block.h"
 #define BLOCKS_PER_PAGE = /block.size
@@ -25,6 +25,7 @@ void swap_in(int pos)
 {
     struct block *swap_block;
     swap_block = block_get_role (BLOCK_SWAP);
+    int sssssize = swap_block->size;
     int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
     int k;
     for(k = 0;k < size;k++)

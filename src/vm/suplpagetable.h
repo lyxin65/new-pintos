@@ -26,7 +26,7 @@ mapid_t add_file(int fd, int va, int sz) //va : addr, sz : file size
     sys_read(fd, buffer, sz);
     for(int i = 0;i < num;i++)
     {
-        block_write(file_block, va / file_block->size + num, buffer + num * blksz);
+        block_write(file_block, va / file_block->size + num, buffer + num * cntsz);
         pagetable[va / file_block->size] = FILE_NO;
     }
     filetable[FILE_NO] = va / file_block->size;
@@ -43,7 +43,7 @@ void rem_file(mapid_t m)
     swap_block = block_get_role (BLOCK_FILESYS);
     int blksz = file_block->size;// BLOCKS_SIZE
     int pos = filetable[m];
-    int cnt = 0;
+    int cnt = 0
     while(pagetable[pos + cnt] == m)
     {
         block_read(file_block, pos + cnt, buffer + cnt * blksz);
