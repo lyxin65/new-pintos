@@ -53,3 +53,12 @@ void rem_file(mapid_t m)
     sys_write(filename[m], buffer, filesize[m]);
     filename[m] = 0;
 }
+
+void visit_file(mapid_t m, int modify, int dlt)
+{
+    struct block *file_block;
+    swap_block = block_get_role (BLOCK_FILESYS);
+    int blksz = file_block->size;// BLOCKS_SIZE
+    int pos = filetable[m] + dlt / block->size;
+    visit_frame(pos , modify);
+}

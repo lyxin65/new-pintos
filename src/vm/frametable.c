@@ -49,9 +49,49 @@ void* create_frame(int pos) //allocate pages
     }
 }
 
-void* visit_frame(int addr, int w_r)
+void* create_zero(int pos) //allocate pages
 {
-    int pos = addr / PGSIZE;
+    frame* p = framehead;
+    while(p->next != NULL)
+    {
+        p = p->next;
+    }
+    void* tmp = palloc_get_page(PAL_USER | PAL_ZERO);
+    if(tmp != NULL)
+    {
+        p->next = malloc(sizeof(frame));
+        p->next->pageptr = tmp;
+        p->next->pos = pos;
+        return tmp;
+    }
+    else
+    {
+        evict();
+        return create_frame(pos);
+    }
+}
+
+
+void delete_frame(void* page)
+{
+    frame* f = framehead;
+    while(f->next != null)
+    {
+        if(f->next->pageptr == page)
+        {
+            if(f->next == clockptr)
+            {
+                clockptr = f->next->next;
+            }
+            palloc_free_page(f->next->pageptr);
+            free(f->next);
+            f->next = f->next->next;
+        }
+    }
+}
+
+void* visit_frame(int pos, int w_r)
+{
     frame* f = framehead;
     while(f->next != NULL)
     {
@@ -65,7 +105,7 @@ void* visit_frame(int addr, int w_r)
     struct intr_frame* g;
     g->eax = -1;
     page_fault(g);
-    return NULL;//?????
+    return NULL;
 }
 
 void evict()
@@ -80,7 +120,7 @@ void evict()
         {
             if(clockptr->next->dirty)
             {
-               frame_out(clockptr->next->pageptr, clockptr->next->pos);
+                frame_out(clockptr->next->pageptr, clockptr->next->pos);
             }
             palloc_free_page(clockptr->next->pageptr);
             clockptr->next = clockptr->next->next;
