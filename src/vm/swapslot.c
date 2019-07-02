@@ -2,12 +2,13 @@
 // Created by acmzms on 19-6-29.
 //
 
-#pragma once
-
-#include "frametable.h"
+#include "vm/swapslot.h"
+#include "vm/frametable.h"
 #include "threads/vaddr.h"
 #include "devices/block.h"
-#define BLOCKS_PER_PAGE = /block.size
+#include <string.h>
+#include "threads/malloc.h"
+
 int* slot;
 void* buffer;
 int size = 3 << 8;
@@ -24,8 +25,8 @@ void init()
 void swap_in(int pos)
 {
     struct block *swap_block;
-    swap_block = block_get_role (BLOCK_SWAP);
-    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
+    swap_block = (struct block *)block_get_role (BLOCK_SWAP);
+    int bpp = PGSIZE / block_size(swap_block);// BLOCKS_PER_PAGE
     int k;
     for(k = 0;k < size;k++)
     {
@@ -37,7 +38,7 @@ void swap_in(int pos)
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_write(swap_block, k * bpp + i, buffer + i * swap_block->size);
+        block_write(swap_block, k * bpp + i, buffer + i * block_size(swap_block));
     }
 }
 
@@ -45,7 +46,7 @@ void swap_out(int pos)
 {
     struct block *swap_block;
     swap_block = block_get_role (BLOCK_SWAP);
-    int bpp = PGSIZE / swap_block->size;// BLOCKS_PER_PAGE
+    int bpp = PGSIZE / block_size(swap_block);// BLOCKS_PER_PAGE
     int k;
     for(k = 0;k < size;k++)
     {
@@ -57,7 +58,7 @@ void swap_out(int pos)
     }
     for(int i = 0;i < bpp;i++)
     {
-        block_read(swap_block, k * bpp + i, buffer + i * swap_block->size);
+        block_read(swap_block, k * bpp + i, buffer + i * block_size(swap_block));
     }
 }
 

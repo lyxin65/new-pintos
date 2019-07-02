@@ -3,30 +3,13 @@
 //
 
 #pragma once
+#include "vm/frametable.h"
 #include "threads/palloc.h"
 #include "userprog/exception.h"
+#include "vm/swapslot.h"
 
-struct frame
-{
-    // info from process
-    void* pageptr;
-    int pos;
-    struct frame* next;
-    int r; //for LRU
-    int dirty;
-    /*
-    frame()
-    {
-        pageptr = NULL;
-        next = NULL;
-        dirty = 0;
-        r = 1;
-    }
-    */
-};
-
-struct frame* framehead;
-struct frame* clockptr;
+struct frame *framehead;
+struct frame *clockptr;
 
 void* create_frame(int pos) //allocate pages
 {

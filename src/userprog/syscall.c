@@ -430,7 +430,7 @@ put_user (uint8_t *udst, uint8_t byte)
 mapid_t sys_mmap(int fd, void *addr)
 {
     int va = *((int*)addr);
-    int len = filesize(fd);
+    int len = sys_filesize(fd);
     if(len == 0 || va % PGSIZE != 0 || va == 0 || fd == 0 || fd == 1)
     {
         return -1;
