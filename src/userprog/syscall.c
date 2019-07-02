@@ -13,7 +13,7 @@
 #include "userprog/pagedir.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
-
+//#include "vm/suplpagetable.h"
 #ifdef VM
 #include "threads/vaddr.h"
 #endif

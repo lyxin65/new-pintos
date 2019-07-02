@@ -11,7 +11,7 @@
 struct frame *framehead;
 struct frame *clockptr;
 
-void* create_frame(int pos, void* tmp) //allocate pages
+void create_frame(int pos, void* tmp) //allocate pages
 {
     struct frame* p = framehead;
     while(p->next != NULL)
@@ -25,12 +25,12 @@ void* create_frame(int pos, void* tmp) //allocate pages
         p->next->r = 1;
         p->next->pageptr = tmp;
         p->next->pos = pos;
-        return tmp;
+        return ;
     }
     else
     {
         evict();
-        return create_frame(pos);
+        //return create_frame(pos);
     }
 }
 

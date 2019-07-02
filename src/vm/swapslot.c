@@ -8,6 +8,7 @@
 #include "devices/block.h"
 #include <string.h>
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 
 int* slot;
 void* buffer;
@@ -64,7 +65,7 @@ void swap_out(int pos)
 
 void frame_in(int pos)
 {
-    void *p = create_frame(pos);
+    void *p = palloc_get_page(PAL_USER);
     swap_out(pos);
     memcpy(p, buffer, PGSIZE);
 }

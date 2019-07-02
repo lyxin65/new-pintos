@@ -29,9 +29,9 @@ struct frame
 
 void evict(void);
 
-void* create_frame(int pos);
+void create_frame(int pos, void* tmp);
 
-void* create_zero(int pos);
+//void* create_zero(int pos);
 
 void delete_frame(void* page);
 
