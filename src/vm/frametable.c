@@ -7,30 +7,38 @@
 #include "threads/palloc.h"
 #include "userprog/exception.h"
 #include "vm/swapslot.h"
+#include "threads/malloc.h"
 
 struct frame *framehead;
 struct frame *clockptr;
 
+void frame_init() {
+	printf("   enter frame init\n");
+	framehead = malloc(sizeof(struct frame));
+	printf("   1 step\n");
+	clockptr = framehead;
+}
+
 void create_frame(int pos, void* tmp) //allocate pages
 {
-    struct frame* p = framehead;
+	struct frame* p = framehead;
     while(p->next != NULL)
     {
         p = p->next;
     }
     //void* tmp = palloc_get_page(PAL_USER);
+    printf("   after while\n");
     if(tmp != NULL)
     {
-        p->next = malloc(sizeof(struct frame));
-        p->next->r = 1;
-        p->next->pageptr = tmp;
-        p->next->pos = pos;
-        return ;
+    	p->next = malloc(sizeof(struct frame));
+		p->next->r = 1;
+		p->next->pageptr = tmp;
+		p->next->pos = pos;
     }
     else
     {
         evict();
-        //return create_frame(pos);
+        create_frame(pos, tmp);
     }
 }
 
@@ -56,7 +64,7 @@ void create_frame(int pos, void* tmp) //allocate pages
         return create_frame(pos);
     }
 }*/
-
+//please delete this
 
 void delete_frame(void* page)
 {
@@ -72,7 +80,9 @@ void delete_frame(void* page)
             //palloc_free_page(f->next->pageptr);
             free(f->next);
             f->next = f->next->next;
+            break;
         }
+        f = f->next;
     }
 }
 

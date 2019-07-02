@@ -13,7 +13,7 @@
 
 
 
-void init(void);
+void swap_init(void);
 
 void swap_in(int pos);
 

@@ -110,8 +110,7 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt)
 void *
 palloc_get_page (enum palloc_flags flags) 
 {
-  
-  //return palloc_get_multiple (flags, 1);
+  if (flags == 0) return palloc_get_multiple (flags, 1);
   void* tmp = palloc_get_multiple (flags, 1);
   create_frame(-1, tmp);
   return tmp;

@@ -14,7 +14,7 @@ int* slot;
 void* buffer;
 int size = 3 << 8;
 
-void init()
+void swap_init()
 {
     slot = malloc(size * sizeof(int));
     for(int i = 0;i < size;i++)

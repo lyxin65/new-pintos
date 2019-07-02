@@ -27,6 +27,8 @@ struct frame
     */
 };
 
+void frame_init(void);
+
 void evict(void);
 
 void create_frame(int pos, void* tmp);
