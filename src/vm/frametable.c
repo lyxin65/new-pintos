@@ -2,7 +2,7 @@
 // Created by acmzms on 19-6-28.
 //
 
-#pragma once
+
 #include "vm/frametable.h"
 #include "threads/palloc.h"
 #include "userprog/exception.h"
@@ -88,8 +88,8 @@ void* visit_frame(int pos, int w_r)
             return f->pageptr;
         }
     }
-    struct intr_frame* g;
-    g->eax = -1;
+    //struct intr_frame* g;
+    //g->eax = -1;
     //page_fault(g);
     return NULL;
 }

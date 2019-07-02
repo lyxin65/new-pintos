@@ -13,7 +13,6 @@ struct file_descriptor
     /* data */
 };
 
-
 void sys_exit(int);
 
 void syscall_init (void);

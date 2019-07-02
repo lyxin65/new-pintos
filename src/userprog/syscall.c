@@ -6,7 +6,6 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "user/syscall.h"
-#include "vm/suplpagetable.c"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
 #include "filesys/filesys.h"
@@ -14,7 +13,6 @@
 #include "userprog/pagedir.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
-#include "lib/kernel/list.h"
 
 #ifdef VM
 #include "threads/vaddr.h"
@@ -65,7 +63,7 @@ void syscall_init(void)
 
 /* modified by YN  begin*/
 
-struct file_descriptor *get_fd(struct thread *, int);
+struct file_descriptor* get_fd(struct thread *t, int fd);
 
 struct file_descriptor *get_fd(struct thread *t, int fd_num)
 {
@@ -444,7 +442,7 @@ mapid_t sys_mmap(int fd, void *addr)
       return -1;          //map failed
 
     int va = *((int*)addr);
-    int len = filesize(fd);
+    int len = sys_filesize(fd);
     if(len == 0 || va % PGSIZE != 0 || va == 0 || fd < 3)
     {
         return -1;

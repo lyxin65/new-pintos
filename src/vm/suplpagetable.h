@@ -8,6 +8,8 @@
 #include "vm/frametable.h"
 #include "userprog/syscall.h"
 #include "devices/block.h"
+#include "user/syscall.h"
+
 #define PAGE_NUM (3 << 18)
 #define FILE_NUM (3 << 9)
 mapid_t pagetable[PAGE_NUM];
