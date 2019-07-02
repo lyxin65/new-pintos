@@ -11,14 +11,14 @@
 struct frame *framehead;
 struct frame *clockptr;
 
-void* create_frame(int pos) //allocate pages
+void* create_frame(int pos, void* tmp) //allocate pages
 {
     struct frame* p = framehead;
     while(p->next != NULL)
     {
         p = p->next;
     }
-    void* tmp = palloc_get_page(PAL_USER);
+    //void* tmp = palloc_get_page(PAL_USER);
     if(tmp != NULL)
     {
         p->next = malloc(sizeof(struct frame));
@@ -34,14 +34,14 @@ void* create_frame(int pos) //allocate pages
     }
 }
 
-void* create_zero(int pos) //allocate pages
+/*void* create_zero(int pos, page tmp) //allocate pages
 {
     struct frame* p = framehead;
     while(p->next != NULL)
     {
         p = p->next;
     }
-    void* tmp = palloc_get_page(PAL_USER | PAL_ZERO);
+    //void* tmp = palloc_get_page(PAL_USER | PAL_ZERO);
     if(tmp != NULL)
     {
         p->next = malloc(sizeof(struct frame));
@@ -55,7 +55,7 @@ void* create_zero(int pos) //allocate pages
         evict();
         return create_frame(pos);
     }
-}
+}*/
 
 
 void delete_frame(void* page)
@@ -69,7 +69,7 @@ void delete_frame(void* page)
             {
                 clockptr = f->next->next;
             }
-            palloc_free_page(f->next->pageptr);
+            //palloc_free_page(f->next->pageptr);
             free(f->next);
             f->next = f->next->next;
         }

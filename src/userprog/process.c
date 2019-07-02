@@ -175,8 +175,8 @@ tid_t process_execute(const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  //fn_copy = palloc_get_page(0);
-    fn_copy = create_frame(-1);
+  fn_copy = palloc_get_page(0);
+    //fn_copy = create_frame(-1);
   if (fn_copy == NULL) {
     return TID_ERROR;                  //-1
   }
@@ -184,11 +184,11 @@ tid_t process_execute(const char *file_name)
                                        //PGSIZE :1 <<12
 
   char *thread_name, *the_left;
-  //thread_name = palloc_get_page(0);
-    thread_name = create_frame(-1);
+  thread_name = palloc_get_page(0);
+  //  thread_name = create_frame(-1);
   if (thread_name == NULL) {
-      //palloc_free_page(fn_copy);
-      delete_frame(fn_copy);
+      palloc_free_page(fn_copy);
+      //delete_frame(fn_copy);
       return TID_ERROR;
   }
   strlcpy(thread_name, file_name, PGSIZE);
@@ -196,10 +196,10 @@ tid_t process_execute(const char *file_name)
 
   struct pro_entry *entry = new_entry(fn_copy);
   if (entry == NULL) {
-      //palloc_free_page(fn_copy);
-      //palloc_free_page(thread_name);
-      delete_frame(fn_copy);
-      delete_frame(thread_name);
+      palloc_free_page(fn_copy);
+      palloc_free_page(thread_name);
+      //delete_frame(fn_copy);
+      //delete_frame(thread_name);
       return TID_ERROR;
   }
 
@@ -208,10 +208,10 @@ tid_t process_execute(const char *file_name)
  // __debug("---[debug]--- tid=%d\n", tid);
 
   if (tid == TID_ERROR) {
-      //palloc_free_page(fn_copy);
-      //palloc_free_page(thread_name);
-      delete_frame(fn_copy);
-      delete_frame(thread_name);
+      palloc_free_page(fn_copy);
+      palloc_free_page(thread_name);
+      //delete_frame(fn_copy);
+      //delete_frame(thread_name);
       free(entry);
       return -1;
   }
@@ -244,8 +244,8 @@ tid_t process_execute(const char *file_name)
       cur->pro_child_pro[cur->pro_child_number++] = entry->tid;
   }
 
-  if (thread_name) delete_frame(thread_name);//palloc_free_page(thread_name);
-  if (fn_copy) delete_frame(fn_copy);//palloc_free_page(fn_copy);
+  if (thread_name) palloc_free_page(thread_name);
+  if (fn_copy) palloc_free_page(fn_copy);
   __debug("end of exec filename: %s\n", file_name);
   return entry->tid;
 }
@@ -740,16 +740,16 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
     /* Get a page of memory. */
-    //uint8_t *kpage = palloc_get_page(PAL_USER);
-    uint8_t *kpage = create_frame(-1);
+    uint8_t *kpage = palloc_get_page(PAL_USER);
+    //uint8_t *kpage = create_frame(-1);
     if (kpage == NULL)
       return false;
 
     /* Load this page. */
     if (file_read(file, kpage, page_read_bytes) != (int)page_read_bytes)
     {
-      //palloc_free_page(kpage);
-      delete_frame(kpage);
+      palloc_free_page(kpage);
+      //delete_frame(kpage);
       return false;
     }
     memset(kpage + page_read_bytes, 0, page_zero_bytes);
@@ -757,8 +757,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
     /* Add the page to the process's address space. */
     if (!install_page(upage, kpage, writable))
     {
-      //palloc_free_page(kpage);
-        delete_frame(kpage);
+      palloc_free_page(kpage);
+        //delete_frame(kpage);
       return false;
     }
 
@@ -779,16 +779,16 @@ setup_stack(void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  //kpage = palloc_get_page(PAL_USER | PAL_ZERO);
-  kpage = create_zero(-1);
+  kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+  //kpage = create_zero(-1);
   if (kpage != NULL)
   {
     success = install_page(((uint8_t *)PHYS_BASE) - PGSIZE, kpage, true);
     if (success)
       *esp = PHYS_BASE;
     else
-      //palloc_free_page(kpage);
-      delete_frame(kpage);
+      palloc_free_page(kpage);
+      //delete_frame(kpage);
   }
   return success;
 }

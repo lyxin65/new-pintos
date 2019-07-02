@@ -10,8 +10,8 @@
 #include "devices/block.h"
 #include "user/syscall.h"
 
-#define PAGE_NUM (3 << 18)
-#define FILE_NUM (3 << 9)
+#define PAGE_NUM (3 << 8)
+#define FILE_NUM (3 << 8)
 mapid_t pagetable[PAGE_NUM];
 int filetable[FILE_NUM]; //start pos
 int file_size[FILE_NUM];  //size
