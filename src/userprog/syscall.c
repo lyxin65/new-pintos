@@ -16,6 +16,10 @@
 #include "threads/malloc.h"
 #include "lib/kernel/list.h"
 
+#ifdef VM
+#include "threads/vaddr.h"
+#endif
+
 #ifdef DEBUG
 #define __debug(...) printf(__VA_ARGS__)
 #else
@@ -149,6 +153,8 @@ void sys_exit(int status)
   thread_current()->exitcode = status;
   thread_exit();
 }
+mapid_t sys_mmap(int fd, void *addr);
+void sys_munmap (mapid_t mapping);
 
 static void
 syscall_handler(struct intr_frame *f UNUSED)
@@ -169,8 +175,7 @@ syscall_handler(struct intr_frame *f UNUSED)
   case SYS_HALT:
     __debug("sys_halt\n");
     shutdown_power_off();
-    NOT_REACHED(); //no it should not be written , it is a panic
-    //dont no what it is, but it is used in lib/user/syscall
+    NOT_REACHED();
   case SYS_EXIT:
     __debug("sys_exit\n");
     sys_exit(args[1]);
@@ -219,6 +224,12 @@ syscall_handler(struct intr_frame *f UNUSED)
     __debug("sys_close\n");
     sys_close(args[1]);
     return;
+  //#ifdef VM
+  case SYS_MMAP:
+    f->eax = sys_mmap(args[1],args[2]);
+  case SYS_MUNMAP:
+    sys_munmap(args[1]);
+  //#endif
   default:
     ASSERT(false);
     thread_exit();
@@ -426,12 +437,15 @@ put_user (uint8_t *udst, uint8_t byte)
   return error_code != -1;
 }
 
-
+//#ifdef VM
 mapid_t sys_mmap(int fd, void *addr)
 {
+    if(addr == NULL || pg_ofs(addr) == NULL ) 
+      return -1;          //map failed
+
     int va = *((int*)addr);
-    int len = sys_filesize(fd);
-    if(len == 0 || va % PGSIZE != 0 || va == 0 || fd == 0 || fd == 1)
+    int len = filesize(fd);
+    if(len == 0 || va % PGSIZE != 0 || va == 0 || fd < 3)
     {
         return -1;
     }
@@ -444,6 +458,7 @@ void sys_munmap (mapid_t mapping)
 }
 
 
+//#endif 
 
 /* modified by YN and ZMS  end*/
 
