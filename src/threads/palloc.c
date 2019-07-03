@@ -10,7 +10,7 @@
 #include "threads/loader.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "vm/frametable.h"
+
 /* Page allocator.  Hands out memory in page-size (or
    page-multiple) chunks.  See malloc.h for an allocator that
    hands out smaller chunks.
@@ -110,10 +110,7 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt)
 void *
 palloc_get_page (enum palloc_flags flags) 
 {
-  if (flags == 0) return palloc_get_multiple (flags, 1);
-  void* tmp = palloc_get_multiple (flags, 1);
-  create_frame(-1, tmp);
-  return tmp;
+  return palloc_get_multiple (flags, 1);
 }
 
 /* Frees the PAGE_CNT pages starting at PAGES. */
@@ -149,7 +146,6 @@ void
 palloc_free_page (void *page) 
 {
   palloc_free_multiple (page, 1);
-  delete_frame(page);
 }
 
 /* Initializes pool P as starting at START and ending at END,

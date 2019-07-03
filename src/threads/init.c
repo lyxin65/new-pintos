@@ -30,15 +30,16 @@
 #include "userprog/tss.h"
 #else
 #include "tests/threads/tests.h"
+#ifdef VM
+#include "vm/frame.h"
+#include "vm/swap.h"
+#endif
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
 #include "devices/ide.h"
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
-#endif
-#ifdef VM
-#include "vm/frametable.h"
 #endif
 
 /* Page directory with kernel mappings only. */
@@ -98,14 +99,15 @@ pintos_init (void)
   printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
           init_ram_pages * PGSIZE / 1024);
 
-#ifdef VM
-  frame_init();
-#endif
-
   /* Initialize memory system. */
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
+
+#ifdef VM
+  /* Initialize Virtual memory system. (Project 3) */
+  vm_frame_init();
+#endif
 
   /* Segmentation. */
 #ifdef USERPROG
@@ -135,6 +137,11 @@ pintos_init (void)
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
+#endif
+
+#ifdef VM
+  /* Initialize Virtual memory system. (Project 3) */
+  vm_frame_init();
 #endif
 
   printf ("Boot complete.\n");
@@ -174,6 +181,7 @@ paging_init (void)
   uint32_t *pd, *pt;
   size_t page;
   extern char _start, _end_kernel_text;
+
   pd = init_page_dir = palloc_get_page (PAL_ASSERT | PAL_ZERO);
   pt = NULL;
   for (page = 0; page < init_ram_pages; page++)

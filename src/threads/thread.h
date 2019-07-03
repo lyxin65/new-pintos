@@ -123,9 +123,17 @@ struct thread
     /* Owned by userprog/syscall.c. */
     struct list file_descriptors;
 
+    uint8_t *current_esp;   
+
  #endif
  /*modified by yn end */
+#ifdef VM
+    /* Owned by page.c */
+    struct supplemental_page_table *supt;  
 
+    /* Owned by syscall.c */
+    struct list mmap_list;
+#endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

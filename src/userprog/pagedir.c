@@ -1,5 +1,4 @@
 #include "userprog/pagedir.h"
-#include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -59,9 +58,6 @@ lookup_page (uint32_t *pd, const void *vaddr, bool create)
 {
   uint32_t *pt, *pde;
 
-    if (pd == NULL) {
-        printf("sfsdfsdf\n");
-}
   ASSERT (pd != NULL);
 
   /* Shouldn't create new kernel virtual mappings. */

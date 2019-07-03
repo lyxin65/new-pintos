@@ -14,6 +14,11 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+#ifdef VM
+#include "vm/frame.h"
+#include "vm/page.h"
+#include "vm/swap.h"
+#endif
 #include "devices/timer.h"
 #include "threads/fixed-point.h"
 
@@ -204,6 +209,9 @@ thread_init (void)
   initial_thread->pro_child_pro = NULL;
   list_init (&initial_thread->file_descriptors);
   initial_thread->executing_file = NULL;
+#endif
+#ifdef VM
+  list_init(&initial_thread->mmap_list);
 #endif
   /*modified by yn end*/
 
@@ -736,6 +744,9 @@ init_thread (struct thread *t, const char *name, int priority)
       list_init (&t->file_descriptors);
       t->executing_file = NULL;
   #endif
+#ifdef VM
+  list_init(&t->mmap_list);
+#endif
 /*modified by yn end */
   t->magic = THREAD_MAGIC;
 
